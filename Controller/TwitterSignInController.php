@@ -25,15 +25,15 @@ class TwitterSignInController extends ContainerAware
      */
     public function authenticateAction(Request $request)
     {
-        $oauth = $this->getOAuthClient();
-        $token = $this->fetchRequestToken($oauth);
+        $twitter = new TwitterApiGateway($this->getOAuthClient());
+        $token = $this->fetchRequestToken($twitter);
         $this->container->get('session')
             ->set(self::SESSION_REQUEST_TOKEN, $token);
         $this->container->get('session')
             ->set(self::SESSION_REFERER, $request->headers->get('Referer', null, true));
 
         return new RedirectResponse(
-            self::TWITTER_URL_OAUTH_AUTHENTICATE . '?oauth_token=' . urlencode($token['oauth_token'])
+            $twitter->generateAuthRedirectUrl($token)
         );
     }
 
@@ -46,13 +46,11 @@ class TwitterSignInController extends ContainerAware
     }
 
     /**
-     * @param \OAuth $oauth
+     * @param TwitterApiGateway $twitter
      * @return array
      */
-    private function fetchRequestToken(\OAuth $oauth)
+    private function fetchRequestToken(TwitterApiGateway $twitter)
     {
-        $twitter = new TwitterApiGateway($oauth);
-
         return $twitter->getRequestToken(
             $this->container->get('router')->generate('rabus_twitter_signin_callback', array(), true)
         );

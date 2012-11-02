@@ -4,9 +4,9 @@ namespace Rabus\Bundle\Twitter\SignInBundle\Service;
 
 class TwitterApiGateway
 {
-    const TWITTER_URL_OAUTH_AUTHENTICATE = 'https://api.twitter.com/oauth/authenticate';
-    const TWITTER_URL_OAUTH_REQUEST_TOKEN = 'https://api.twitter.com/oauth/request_token';
-    const TWITTER_URL_OAUTH_ACCESS_TOKEN = 'https://api.twitter.com/oauth/access_token';
+    const ENDPOINT_OAUTH_AUTHENTICATE = 'https://api.twitter.com/oauth/authenticate';
+    const ENDPOINT_OAUTH_REQUEST_TOKEN = 'https://api.twitter.com/oauth/request_token';
+    const ENDPOINT_OAUTH_ACCESS_TOKEN = 'https://api.twitter.com/oauth/access_token';
 
     /**
      * @var \OAuth
@@ -30,7 +30,7 @@ class TwitterApiGateway
     {
         try {
             $token = $this->oauth->getRequestToken(
-                self::TWITTER_URL_OAUTH_REQUEST_TOKEN,
+                self::ENDPOINT_OAUTH_REQUEST_TOKEN,
                 $callbackUrl
             );
         } catch (\OAuthException $e) {
@@ -42,5 +42,10 @@ class TwitterApiGateway
         }
 
         return $token;
+    }
+
+    public function generateAuthRedirectUrl($requestToken)
+    {
+        return self::ENDPOINT_OAUTH_AUTHENTICATE . '?oauth_token=' . urlencode($requestToken['oauth_token']);
     }
 }

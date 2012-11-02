@@ -54,4 +54,17 @@ class TwitterApiGatewayTest extends \PHPUnit_Framework_TestCase
 
         $this->twitter->getRequestToken('http://www.exaple.com/twitter/callback');
     }
+
+    public function testGenerateAuthRedirectUrl()
+    {
+        $requestToken = array(
+            'oauth_token' => 'foo',
+            'oauth_token_secret' => 'bar'
+        );
+
+        $this->assertEquals(
+            'https://api.twitter.com/oauth/authenticate?oauth_token=foo',
+            $this->twitter->generateAuthRedirectUrl($requestToken)
+        );
+    }
 }
