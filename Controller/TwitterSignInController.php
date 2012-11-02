@@ -107,13 +107,8 @@ class TwitterSignInController extends ContainerAware
      */
     private function fetchAccessToken(\OAuth $oauth, $requestToken, $oauth_verifier)
     {
-        $oauth->setToken($requestToken['oauth_token'], $requestToken['oauth_token_secret']);
-        $accessToken = $oauth->getAccessToken(self::TWITTER_URL_OAUTH_ACCESS_TOKEN, null, $oauth_verifier);
+        $twitter = new TwitterApiGateway($oauth);
 
-        if (!$accessToken) {
-            throw new \RuntimeException('Fetching OAuth access token failed.');
-        }
-
-        return $accessToken;
+        return $twitter->getAccessToken($requestToken, $oauth_verifier);
     }
 }

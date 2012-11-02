@@ -22,6 +22,27 @@ class TwitterApiGateway
     }
 
     /**
+     * @param array $requestToken
+     * @param string $oauthVerifier
+     * @return array
+     * @throws TwitterApiException
+     */
+    public function getAccessToken(array $requestToken, $oauthVerifier)
+    {
+        try {
+            $this->oauth->setToken($requestToken['oauth_token'], $requestToken['oauth_token_secret']);
+
+            return $this->oauth->getAccessToken(
+                self::ENDPOINT_OAUTH_ACCESS_TOKEN,
+                null,
+                $oauthVerifier
+            );
+        } catch (\OAuthException $e) {
+            throw new TwitterApiException('Fetching OAuth access token failed', 0, $e);
+        }
+    }
+
+    /**
      * @param string $callbackUrl
      * @return array
      * @throws TwitterApiException
@@ -44,7 +65,11 @@ class TwitterApiGateway
         return $token;
     }
 
-    public function generateAuthRedirectUrl($requestToken)
+    /**
+     * @param array $requestToken
+     * @return string
+     */
+    public function generateAuthRedirectUrl(array $requestToken)
     {
         return self::ENDPOINT_OAUTH_AUTHENTICATE . '?oauth_token=' . urlencode($requestToken['oauth_token']);
     }
