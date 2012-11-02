@@ -15,9 +15,6 @@ class TwitterSignInController extends ContainerAware
     const SESSION_REQUEST_TOKEN = 'rabus_twitter_request_token';
     const SESSION_ACCESS_TOKEN = 'rabus_twitter_access_token';
     const SESSION_REFERER = 'rabus_twitter_referer';
-    const TWITTER_URL_OAUTH_AUTHENTICATE = 'https://api.twitter.com/oauth/authenticate';
-    const TWITTER_URL_OAUTH_REQUEST_TOKEN = 'https://api.twitter.com/oauth/request_token';
-    const TWITTER_URL_OAUTH_ACCESS_TOKEN = 'https://api.twitter.com/oauth/access_token';
 
     /**
      * @param Request $request
@@ -69,8 +66,8 @@ class TwitterSignInController extends ContainerAware
 
         $this->validateCallbackTokens($requestToken, $oauth_token, $oauth_verifier);
 
-        $oauth = $this->getOAuthClient();
-        $accessToken = $this->fetchAccessToken($oauth, $requestToken, $oauth_verifier);
+        $twitter = new TwitterApiGateway($this->getOAuthClient());
+        $accessToken = $twitter->getAccessToken($requestToken, $oauth_verifier);
         $this->container->get('session')->set(self::SESSION_ACCESS_TOKEN, $accessToken);
 
         $response = new RedirectResponse($this->container->get('session')->get(self::SESSION_REFERER));
@@ -96,19 +93,5 @@ class TwitterSignInController extends ContainerAware
         if ($requestToken['oauth_token'] != $oauth_token) {
             throw new CallbackException('Request tokens do not match.');
         }
-    }
-
-    /**
-     * @param \OAuth $oauth
-     * @param array $requestToken
-     * @param string $oauth_verifier
-     * @return array
-     * @throws \RuntimeException
-     */
-    private function fetchAccessToken(\OAuth $oauth, $requestToken, $oauth_verifier)
-    {
-        $twitter = new TwitterApiGateway($oauth);
-
-        return $twitter->getAccessToken($requestToken, $oauth_verifier);
     }
 }
