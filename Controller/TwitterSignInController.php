@@ -3,6 +3,7 @@
 namespace Rabus\Bundle\Twitter\SignInBundle\Controller;
 
 use Rabus\Bundle\Twitter\SignInBundle\Exception\CallbackException;
+use Rabus\Bundle\Twitter\SignInBundle\Service\TwitterApiGateway;
 
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -47,20 +48,14 @@ class TwitterSignInController extends ContainerAware
     /**
      * @param \OAuth $oauth
      * @return array
-     * @throws \RuntimeException
      */
     private function fetchRequestToken(\OAuth $oauth)
     {
-        $token = $oauth->getRequestToken(
-            self::TWITTER_URL_OAUTH_REQUEST_TOKEN,
+        $twitter = new TwitterApiGateway($oauth);
+
+        return $twitter->getRequestToken(
             $this->container->get('router')->generate('rabus_twitter_signin_callback', array(), true)
         );
-
-        if (!$token) {
-            throw new \RuntimeException('Fetching OAuth request token failed.');
-        }
-
-        return $token;
     }
 
     /**
