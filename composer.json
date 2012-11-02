@@ -1,0 +1,33 @@
+{
+    "name": "derrabus/twitter-signin-bundle",
+    "description": "An implementation of the \"Sign in with Twitter\" workflow.",
+    "keywords": ["twitter"],
+    "type": "symfony-bundle",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Alexander M. Turek",
+            "email": "me@derrabus.de"
+        }
+    ],
+    "require": {
+        "ext-oauth" : "1.2.*",
+        "symfony/dependency-injection": "2.1.*",
+        "symfony/http-foundation": "2.1.*",
+        "symfony/http-kernel": "2.1.*",
+        "symfony/routing": "2.1.*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "3.7.*"
+    },
+    "minimum-stability": "stable",
+    "autoload": {
+        "psr-0": { "Rabus\\Bundle\\Twitter\\SignInBundle": "" }
+    },
+    "target-dir": "Rabus/Bundle/Twitter/SignInBundle",
+    "extra": {
+        "branch-alias": {
+            "dev-master": "0.1.x-dev"
+        }
+    }
+}

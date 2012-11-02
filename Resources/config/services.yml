@@ -1,0 +1,4 @@
+services:
+    oauth:
+        class: OAuth
+        arguments: [%oauth.consumer_key%, %oauth.consumer_secret%]

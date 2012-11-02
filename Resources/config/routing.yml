@@ -1,0 +1,7 @@
+rabus_twitter_signin_authenticate:
+    pattern: /authenticate
+    defaults: { _controller: RabusTwitterSignInBundle:TwitterSignIn:authenticate }
+
+rabus_twitter_signin_callback:
+    pattern: /callback
+    defaults: { _controller: RabusTwitterSignInBundle:TwitterSignIn:callback }
