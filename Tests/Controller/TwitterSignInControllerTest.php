@@ -18,9 +18,9 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
     private $controller;
 
     /**
-     * @var \OAuth|\PHPUnit_Framework_MockObject_MockObject
+     * @var TwitterApiGateway|\PHPUnit_Framework_MockObject_MockObject
      */
-    private $oauthMock;
+    private $twitterMock;
 
     /**
      * @var SessionInterface|\PHPUnit_Framework_MockObject_MockObject
@@ -38,66 +38,57 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
 
         $this->controller = new TwitterSignInController();
 
-        $this->oauthMock = $this->getMockBuilder('OAuth')
+        $this->twitterMock = $this->getMockBuilder('Rabus\Bundle\Twitter\SignInBundle\Service\TwitterApiGateway')
             ->disableOriginalConstructor()
             ->getMock();
-
         $this->sessionMock = $this->getMock('\Symfony\Component\HttpFoundation\Session\SessionInterface');
-
         $this->routerMock = $this->getMockBuilder('\Symfony\Component\Routing\Router')
             ->disableOriginalConstructor()
             ->getMock();
 
         $container = new Container();
-        $container->set('twitter-api-gateway', new TwitterApiGateway($this->oauthMock));
+        $container->set('twitter-api-gateway', $this->twitterMock);
         $container->set('session', $this->sessionMock);
         $container->set('router', $this->routerMock);
 
         $this->controller->setContainer($container);
     }
 
-    public function testRegularLoginFlow()
+    public function testRegularSignInFlow()
     {
         $requestToken = array('oauth_token' => 'foo', 'oauth_token_secret' => 'bar');
-        $this->oauthMock->expects($this->once())
+        $redirectUrl = 'https://api.twitter.com/oauth/authenticate?oauth_token=foo';
+        $callbackUrl = 'http://localhost/callback';
+        $referer = '/foobar';
+
+        $this->twitterMock->expects($this->once())
             ->method('getRequestToken')
-            ->with('https://api.twitter.com/oauth/request_token', 'http://localhost/callback')
+            ->with($callbackUrl)
             ->will($this->returnValue($requestToken));
+        $this->twitterMock->expects($this->once())
+            ->method('generateAuthRedirectUrl')
+            ->with($requestToken)
+            ->will($this->returnValue($redirectUrl));
         $this->sessionMock->expects($this->at(0))
             ->method('set')
             ->with('rabus_twitter_request_token', $requestToken);
         $this->sessionMock->expects($this->at(1))
             ->method('set')
-            ->with('rabus_twitter_referer', '/foobar');
+            ->with('rabus_twitter_referer', $referer);
         $this->routerMock->expects($this->once())
             ->method('generate')
             ->with('rabus_twitter_signin_callback', array(), true)
-            ->will($this->returnValue('http://localhost/callback'));
+            ->will($this->returnValue($callbackUrl));
 
-        $request = Request::create('http://localhost/login');
-        $request->headers->add(array('Referer' => '/foobar'));
+        $request = Request::create('http://localhost/authenticate');
+        $request->headers->add(array('Referer' => $referer));
 
         $response = $this->controller->authenticateAction($request);
 
         $this->assertEquals(302, $response->getStatusCode());
         $this->assertTrue(
-            $response->isRedirect('https://api.twitter.com/oauth/authenticate?oauth_token=foo')
+            $response->isRedirect($redirectUrl)
         );
-    }
-
-    /**
-     * @expectedException \RuntimeException
-     */
-    public function testInvalidOAuthTokenOnLoginAction()
-    {
-        $this->oauthMock->expects($this->any())
-            ->method('getRequestToken')
-            ->will($this->returnValue(null));
-
-        $request = Request::create('http://localhost/login');
-        $request->headers->add(array('Referer' => '/foobar'));
-
-        $this->controller->authenticateAction($request);
     }
 
     public function testRegularCallbackFlow()
@@ -120,14 +111,10 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
         $this->sessionMock->expects($this->at(4))
             ->method('remove')
             ->with('rabus_twitter_referer');
-        $this->oauthMock
-            ->expects($this->once())
-            ->method('setToken')
-            ->with('foo', 'bar');
-        $this->oauthMock
+        $this->twitterMock
             ->expects($this->once())
             ->method('getAccessToken')
-            ->with('https://api.twitter.com/oauth/access_token', null, 'barfoo')
+            ->with($requestToken, 'barfoo')
             ->will($this->returnValue(array('bar' => 'foo')));
 
         $request = Request::create('http://localhost/callback', 'GET', array('oauth_token' => 'foo', 'oauth_verifier' => 'barfoo'));
