@@ -22,7 +22,7 @@ class TwitterSignInController extends ContainerAware
      */
     public function authenticateAction(Request $request)
     {
-        $twitter = new TwitterApiGateway($this->getOAuthClient());
+        $twitter = $this->getTwitter();
         $token = $this->fetchRequestToken($twitter);
         $this->container->get('session')
             ->set(self::SESSION_REQUEST_TOKEN, $token);
@@ -35,11 +35,11 @@ class TwitterSignInController extends ContainerAware
     }
 
     /**
-     * @return \OAuth
+     * @return TwitterApiGateway
      */
-    private function getOAuthClient()
+    private function getTwitter()
     {
-        return $this->container->get('oauth');
+        return $this->container->get('twitter-api-gateway');
     }
 
     /**
@@ -66,7 +66,7 @@ class TwitterSignInController extends ContainerAware
 
         $this->validateCallbackTokens($requestToken, $oauth_token, $oauth_verifier);
 
-        $twitter = new TwitterApiGateway($this->getOAuthClient());
+        $twitter = $this->getTwitter();
         $accessToken = $twitter->getAccessToken($requestToken, $oauth_verifier);
         $this->container->get('session')->set(self::SESSION_ACCESS_TOKEN, $accessToken);
 

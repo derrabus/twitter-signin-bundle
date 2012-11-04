@@ -3,6 +3,7 @@
 namespace Rabus\Bundle\Twitter\SignInBundle\Tests\Controller;
 
 use Rabus\Bundle\Twitter\SignInBundle\Controller\TwitterSignInController;
+use Rabus\Bundle\Twitter\SignInBundle\Service\TwitterApiGateway;
 
 use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\HttpFoundation\Request;
@@ -48,7 +49,7 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
             ->getMock();
 
         $container = new Container();
-        $container->set('oauth', $this->oauthMock);
+        $container->set('twitter-api-gateway', new TwitterApiGateway($this->oauthMock));
         $container->set('session', $this->sessionMock);
         $container->set('router', $this->routerMock);
 
