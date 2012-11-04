@@ -7,7 +7,9 @@ use Rabus\Bundle\Twitter\SignInBundle\Service\TwitterApiGateway;
 
 use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\Routing\Router;
 
 class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
@@ -23,9 +25,9 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
     private $twitterMock;
 
     /**
-     * @var SessionInterface|\PHPUnit_Framework_MockObject_MockObject
+     * @var SessionInterface
      */
-    private $sessionMock;
+    private $session;
 
     /**
      * @var Router|\PHPUnit_Framework_MockObject_MockObject
@@ -41,14 +43,14 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
         $this->twitterMock = $this->getMockBuilder('Rabus\Bundle\Twitter\SignInBundle\Service\TwitterApiGateway')
             ->disableOriginalConstructor()
             ->getMock();
-        $this->sessionMock = $this->getMock('\Symfony\Component\HttpFoundation\Session\SessionInterface');
+        $this->session = new Session(new MockArraySessionStorage());
         $this->routerMock = $this->getMockBuilder('\Symfony\Component\Routing\Router')
             ->disableOriginalConstructor()
             ->getMock();
 
         $container = new Container();
         $container->set('twitter-api-gateway', $this->twitterMock);
-        $container->set('session', $this->sessionMock);
+        $container->set('session', $this->session);
         $container->set('router', $this->routerMock);
 
         $this->controller->setContainer($container);
@@ -69,12 +71,6 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
             ->method('generateAuthRedirectUrl')
             ->with($requestToken)
             ->will($this->returnValue($redirectUrl));
-        $this->sessionMock->expects($this->at(0))
-            ->method('set')
-            ->with('rabus_twitter_request_token', $requestToken);
-        $this->sessionMock->expects($this->at(1))
-            ->method('set')
-            ->with('rabus_twitter_forward_uri', $referer);
         $this->routerMock->expects($this->once())
             ->method('generate')
             ->with('rabus_twitter_signin_callback', array(), true)
@@ -86,9 +82,9 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
         $response = $this->controller->authenticateAction($request);
 
         $this->assertEquals(302, $response->getStatusCode());
-        $this->assertTrue(
-            $response->isRedirect($redirectUrl)
-        );
+        $this->assertTrue($response->isRedirect($redirectUrl));
+        $this->assertEquals($requestToken, $this->session->get('rabus_twitter_request_token'));
+        $this->assertEquals($referer, $this->session->get('rabus_twitter_forward_uri'));
     }
 
     public function testRegularSignInFlowWithForwardUri()
@@ -107,12 +103,6 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
             ->method('generateAuthRedirectUrl')
             ->with($requestToken)
             ->will($this->returnValue($redirectUrl));
-        $this->sessionMock->expects($this->at(0))
-            ->method('set')
-            ->with('rabus_twitter_request_token', $requestToken);
-        $this->sessionMock->expects($this->at(1))
-            ->method('set')
-            ->with('rabus_twitter_forward_uri', $forwardUri);
         $this->routerMock->expects($this->once())
             ->method('generate')
             ->with('rabus_twitter_signin_callback', array(), true)
@@ -124,31 +114,16 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
         $response = $this->controller->authenticateAction($request);
 
         $this->assertEquals(302, $response->getStatusCode());
-        $this->assertTrue(
-            $response->isRedirect($redirectUrl)
-        );
+        $this->assertTrue($response->isRedirect($redirectUrl));
+        $this->assertEquals($requestToken, $this->session->get('rabus_twitter_request_token'));
+        $this->assertEquals($forwardUri, $this->session->get('rabus_twitter_forward_uri'));
     }
 
     public function testRegularCallbackFlow()
     {
         $requestToken = array('oauth_token' => 'foo', 'oauth_token_secret' => 'bar');
-        $this->sessionMock->expects($this->at(0))
-            ->method('get')
-            ->with('rabus_twitter_request_token')
-            ->will($this->returnValue($requestToken));
-        $this->sessionMock->expects($this->at(1))
-            ->method('remove')
-            ->with('rabus_twitter_request_token');
-        $this->sessionMock->expects($this->at(2))
-            ->method('set')
-            ->with('rabus_twitter_access_token', array('bar' => 'foo'));
-        $this->sessionMock->expects($this->at(3))
-            ->method('get')
-            ->with('rabus_twitter_forward_uri')
-            ->will($this->returnValue('/foobar'));
-        $this->sessionMock->expects($this->at(4))
-            ->method('remove')
-            ->with('rabus_twitter_forward_uri');
+        $this->session->set('rabus_twitter_request_token', $requestToken);
+        $this->session->set('rabus_twitter_forward_uri', '/foobar');
         $this->twitterMock
             ->expects($this->once())
             ->method('getAccessToken')
@@ -160,5 +135,8 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
 
         $this->assertEquals(302, $response->getStatusCode());
         $this->assertTrue($response->isRedirect('/foobar'));
+        $this->assertEquals(array('bar' => 'foo'), $this->session->get('rabus_twitter_access_token'));
+        $this->assertNull($this->session->get('rabus_twitter_request_token'));
+        $this->assertNull($this->session->get('rabus_twitter_forward_uri'));
     }
 }
