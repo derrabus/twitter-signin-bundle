@@ -42,7 +42,6 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
             ->disableOriginalConstructor()
             ->getMock();
         $this->sessionMock = $this->getMock('\Symfony\Component\HttpFoundation\Session\SessionInterface');
-        $this->sessionMock = new \Symfony\Component\HttpFoundation\Session\Session();
         $this->routerMock = $this->getMockBuilder('\Symfony\Component\Routing\Router')
             ->disableOriginalConstructor()
             ->getMock();
@@ -55,7 +54,7 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
         $this->controller->setContainer($container);
     }
 
-    public function testRegularSignInFlow()
+    public function testRegularSignInFlowWithoutForwardUri()
     {
         $requestToken = array('oauth_token' => 'foo', 'oauth_token_secret' => 'bar');
         $redirectUrl = 'https://api.twitter.com/oauth/authenticate?oauth_token=foo';
@@ -82,6 +81,44 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
             ->will($this->returnValue($callbackUrl));
 
         $request = Request::create('http://localhost/authenticate');
+        $request->headers->add(array('Referer' => $referer));
+
+        $response = $this->controller->authenticateAction($request);
+
+        $this->assertEquals(302, $response->getStatusCode());
+        $this->assertTrue(
+            $response->isRedirect($redirectUrl)
+        );
+    }
+
+    public function testRegularSignInFlowWithForwardUri()
+    {
+        $requestToken = array('oauth_token' => 'foo', 'oauth_token_secret' => 'bar');
+        $redirectUrl = 'https://api.twitter.com/oauth/authenticate?oauth_token=foo';
+        $callbackUrl = 'http://localhost/callback';
+        $referer = '/foobar';
+        $forwardUri = '/forward_me';
+
+        $this->twitterMock->expects($this->once())
+            ->method('getRequestToken')
+            ->with($callbackUrl)
+            ->will($this->returnValue($requestToken));
+        $this->twitterMock->expects($this->once())
+            ->method('generateAuthRedirectUrl')
+            ->with($requestToken)
+            ->will($this->returnValue($redirectUrl));
+        $this->sessionMock->expects($this->at(0))
+            ->method('set')
+            ->with('rabus_twitter_request_token', $requestToken);
+        $this->sessionMock->expects($this->at(1))
+            ->method('set')
+            ->with('rabus_twitter_forward_uri', $forwardUri);
+        $this->routerMock->expects($this->once())
+            ->method('generate')
+            ->with('rabus_twitter_signin_callback', array(), true)
+            ->will($this->returnValue($callbackUrl));
+
+        $request = Request::create('http://localhost/authenticate', 'GET', array('forward_uri' => $forwardUri));
         $request->headers->add(array('Referer' => $referer));
 
         $response = $this->controller->authenticateAction($request);
