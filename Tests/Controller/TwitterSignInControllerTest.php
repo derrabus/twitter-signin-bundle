@@ -42,6 +42,7 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
             ->disableOriginalConstructor()
             ->getMock();
         $this->sessionMock = $this->getMock('\Symfony\Component\HttpFoundation\Session\SessionInterface');
+        $this->sessionMock = new \Symfony\Component\HttpFoundation\Session\Session();
         $this->routerMock = $this->getMockBuilder('\Symfony\Component\Routing\Router')
             ->disableOriginalConstructor()
             ->getMock();
@@ -74,7 +75,7 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
             ->with('rabus_twitter_request_token', $requestToken);
         $this->sessionMock->expects($this->at(1))
             ->method('set')
-            ->with('rabus_twitter_referer', $referer);
+            ->with('rabus_twitter_forward_uri', $referer);
         $this->routerMock->expects($this->once())
             ->method('generate')
             ->with('rabus_twitter_signin_callback', array(), true)
@@ -106,11 +107,11 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
             ->with('rabus_twitter_access_token', array('bar' => 'foo'));
         $this->sessionMock->expects($this->at(3))
             ->method('get')
-            ->with('rabus_twitter_referer')
+            ->with('rabus_twitter_forward_uri')
             ->will($this->returnValue('/foobar'));
         $this->sessionMock->expects($this->at(4))
             ->method('remove')
-            ->with('rabus_twitter_referer');
+            ->with('rabus_twitter_forward_uri');
         $this->twitterMock
             ->expects($this->once())
             ->method('getAccessToken')
