@@ -2,6 +2,6 @@ services:
     oauth:
         class: OAuth
         arguments: [%oauth.consumer_key%, %oauth.consumer_secret%]
-    twitter-api-gateway:
+    twitter_api_gateway:
         class: Rabus\Bundle\Twitter\SignInBundle\Service\TwitterApiGateway
         arguments: [@oauth]

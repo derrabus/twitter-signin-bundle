@@ -49,7 +49,7 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
             ->getMock();
 
         $container = new Container();
-        $container->set('twitter-api-gateway', $this->twitterMock);
+        $container->set('twitter_api_gateway', $this->twitterMock);
         $container->set('session', $this->session);
         $container->set('router', $this->routerMock);
 

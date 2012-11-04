@@ -43,7 +43,7 @@ class TwitterSignInController extends ContainerAware
      */
     private function getTwitter()
     {
-        return $this->container->get('twitter-api-gateway');
+        return $this->container->get('twitter_api_gateway');
     }
 
     /**
