@@ -5,4 +5,5 @@ php:
   - 5.3
 install:
   - pecl install oauth
+  - composer self-update
   - composer install
