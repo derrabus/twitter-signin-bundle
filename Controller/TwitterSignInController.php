@@ -24,9 +24,9 @@ class TwitterSignInController extends ContainerAware
     {
         $twitter = $this->getTwitter();
         $token = $this->fetchRequestToken($twitter);
-        $this->container->get('session')
+        $request->getSession()
             ->set(self::SESSION_REQUEST_TOKEN, $token);
-        $this->container->get('session')->set(
+        $request->getSession()->set(
             self::SESSION_FORWARD_URI,
             is_null($request->get('forward_uri'))
                 ? $request->headers->get('Referer', null, true)
@@ -63,8 +63,8 @@ class TwitterSignInController extends ContainerAware
      */
     public function callbackAction(Request $request)
     {
-        $requestToken = $this->container->get('session')->get(self::SESSION_REQUEST_TOKEN);
-        $this->container->get('session')->remove(self::SESSION_REQUEST_TOKEN);
+        $requestToken = $request->getSession()->get(self::SESSION_REQUEST_TOKEN);
+        $request->getSession()->remove(self::SESSION_REQUEST_TOKEN);
         $oauth_token = $request->get('oauth_token');
         $oauth_verifier = $request->get('oauth_verifier');
 
@@ -72,10 +72,10 @@ class TwitterSignInController extends ContainerAware
 
         $twitter = $this->getTwitter();
         $accessToken = $twitter->getAccessToken($requestToken, $oauth_verifier);
-        $this->container->get('session')->set(self::SESSION_ACCESS_TOKEN, $accessToken);
+        $request->getSession()->set(self::SESSION_ACCESS_TOKEN, $accessToken);
 
-        $response = new RedirectResponse($this->container->get('session')->get(self::SESSION_FORWARD_URI));
-        $this->container->get('session')->remove(self::SESSION_FORWARD_URI);
+        $response = new RedirectResponse($request->getSession()->get(self::SESSION_FORWARD_URI));
+        $request->getSession()->remove(self::SESSION_FORWARD_URI);
 
         return $response;
     }

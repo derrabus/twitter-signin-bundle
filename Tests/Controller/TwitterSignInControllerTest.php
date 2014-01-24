@@ -50,7 +50,6 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
 
         $container = new Container();
         $container->set('twitter_api_gateway', $this->twitterMock);
-        $container->set('session', $this->session);
         $container->set('router', $this->routerMock);
 
         $this->controller->setContainer($container);
@@ -77,6 +76,7 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
             ->will($this->returnValue($callbackUrl));
 
         $request = Request::create('http://localhost/authenticate');
+        $request->setSession($this->session);
         $request->headers->add(array('Referer' => $referer));
 
         $response = $this->controller->authenticateAction($request);
@@ -109,6 +109,7 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
             ->will($this->returnValue($callbackUrl));
 
         $request = Request::create('http://localhost/authenticate', 'GET', array('forward_uri' => $forwardUri));
+        $request->setSession($this->session);
         $request->headers->add(array('Referer' => $referer));
 
         $response = $this->controller->authenticateAction($request);
@@ -131,6 +132,7 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
             ->will($this->returnValue(array('bar' => 'foo')));
 
         $request = Request::create('http://localhost/callback', 'GET', array('oauth_token' => 'foo', 'oauth_verifier' => 'barfoo'));
+        $request->setSession($this->session);
         $response = $this->controller->callbackAction($request);
 
         $this->assertEquals(302, $response->getStatusCode());
