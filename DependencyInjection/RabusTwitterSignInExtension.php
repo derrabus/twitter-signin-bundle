@@ -4,6 +4,7 @@ namespace Rabus\Bundle\Twitter\SignInBundle\DependencyInjection;
 
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\Config\FileLocator;
+use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 
@@ -19,6 +20,15 @@ class RabusTwitterSignInExtension extends Extension
      */
     public function load(array $configs, ContainerBuilder $container)
     {
+        $config = $this->processConfiguration(new Configuration, $configs);
+
+        $oauthDefinition = new Definition('OAuth', array($config['consumer_key'], $config['consumer_secret']));
+        $oauthDefinition->setPublic(false);
+        $container->setDefinition(
+            'rabus.twitter.oauth',
+            $oauthDefinition
+        );
+
         $loader = new YamlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
         $loader->load('services.yml');
     }
