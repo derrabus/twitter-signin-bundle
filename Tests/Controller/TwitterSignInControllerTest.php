@@ -38,8 +38,6 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
     {
         parent::setUp();
 
-        $this->controller = new TwitterSignInController();
-
         $this->twitterMock = $this->getMockBuilder('Rabus\Bundle\Twitter\SignInBundle\Service\TwitterApiGateway')
             ->disableOriginalConstructor()
             ->getMock();
@@ -48,11 +46,7 @@ class TwitterLoginControllerTest extends \PHPUnit_Framework_TestCase
             ->disableOriginalConstructor()
             ->getMock();
 
-        $container = new Container();
-        $container->set('twitter_api_gateway', $this->twitterMock);
-        $container->set('router', $this->routerMock);
-
-        $this->controller->setContainer($container);
+        $this->controller = new TwitterSignInController($this->twitterMock, $this->routerMock);
     }
 
     public function testRegularSignInFlowWithoutForwardUri()

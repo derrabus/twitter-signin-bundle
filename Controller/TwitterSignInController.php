@@ -4,17 +4,36 @@ namespace Rabus\Bundle\Twitter\SignInBundle\Controller;
 
 use Rabus\Bundle\Twitter\SignInBundle\Exception\CallbackException;
 use Rabus\Bundle\Twitter\SignInBundle\Service\TwitterApiGateway;
-
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\DependencyInjection\ContainerAware;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
-class TwitterSignInController extends ContainerAware
+class TwitterSignInController
 {
     const SESSION_REQUEST_TOKEN = 'rabus_twitter_request_token';
     const SESSION_ACCESS_TOKEN = 'rabus_twitter_access_token';
     const SESSION_FORWARD_URI = 'rabus_twitter_forward_uri';
+
+    /**
+     * @var TwitterApiGateway
+     */
+    private $twitter;
+
+    /**
+     * @var UrlGeneratorInterface
+     */
+    private $router;
+
+    /**
+     * @param TwitterApiGateway $twitter
+     * @param UrlGeneratorInterface $router
+     */
+    public function __construct(TwitterApiGateway $twitter, UrlGeneratorInterface $router)
+    {
+        $this->router = $router;
+        $this->twitter = $twitter;
+    }
 
     /**
      * @param Request $request
@@ -22,8 +41,7 @@ class TwitterSignInController extends ContainerAware
      */
     public function authenticateAction(Request $request)
     {
-        $twitter = $this->getTwitter();
-        $token = $this->fetchRequestToken($twitter);
+        $token = $this->fetchRequestToken($this->twitter);
         $request->getSession()
             ->set(self::SESSION_REQUEST_TOKEN, $token);
         $request->getSession()->set(
@@ -34,16 +52,8 @@ class TwitterSignInController extends ContainerAware
         );
 
         return new RedirectResponse(
-            $twitter->generateAuthRedirectUrl($token)
+            $this->twitter->generateAuthRedirectUrl($token)
         );
-    }
-
-    /**
-     * @return TwitterApiGateway
-     */
-    private function getTwitter()
-    {
-        return $this->container->get('twitter_api_gateway');
     }
 
     /**
@@ -53,7 +63,7 @@ class TwitterSignInController extends ContainerAware
     private function fetchRequestToken(TwitterApiGateway $twitter)
     {
         return $twitter->getRequestToken(
-            $this->container->get('router')->generate('rabus_twitter_signin_callback', array(), true)
+            $this->router->generate('rabus_twitter_signin_callback', array(), true)
         );
     }
 
@@ -70,8 +80,7 @@ class TwitterSignInController extends ContainerAware
 
         $this->validateCallbackTokens($requestToken, $oauth_token, $oauth_verifier);
 
-        $twitter = $this->getTwitter();
-        $accessToken = $twitter->getAccessToken($requestToken, $oauth_verifier);
+        $accessToken = $this->twitter->getAccessToken($requestToken, $oauth_verifier);
         $request->getSession()->set(self::SESSION_ACCESS_TOKEN, $accessToken);
 
         $response = new RedirectResponse($request->getSession()->get(self::SESSION_FORWARD_URI));
