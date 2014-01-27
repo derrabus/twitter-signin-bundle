@@ -1,7 +1,7 @@
 services:
     rabus.twitter.api_gateway:
         class: Rabus\Bundle\Twitter\SignInBundle\Service\TwitterApiGateway
-        arguments: [@rabus.twitter.oauth]
+        arguments: [@rabus.twitter.connection_factory]
     rabus.twitter.sign_in_controller:
         class: Rabus\Bundle\Twitter\SignInBundle\Controller\TwitterSignInController
         arguments: [@rabus.twitter.api_gateway, @router]

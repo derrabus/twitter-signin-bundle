@@ -22,11 +22,14 @@ class RabusTwitterSignInExtension extends Extension
     {
         $config = $this->processConfiguration(new Configuration, $configs);
 
-        $oauthDefinition = new Definition('OAuth', array($config['consumer_key'], $config['consumer_secret']));
-        $oauthDefinition->setPublic(false);
+        $factoryDefinition = new Definition(
+            'Rabus\\Bundle\\Twitter\\SignInBundle\\Service\\ConnectionFactory',
+            array($config['consumer_key'], $config['consumer_secret'])
+        );
+        $factoryDefinition->setPublic(false);
         $container->setDefinition(
-            'rabus.twitter.oauth',
-            $oauthDefinition
+            'rabus.twitter.connection_factory',
+            $factoryDefinition
         );
 
         $loader = new YamlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
