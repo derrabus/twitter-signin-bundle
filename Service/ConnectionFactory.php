@@ -3,9 +3,13 @@
 namespace Rabus\Bundle\Twitter\SignInBundle\Service;
 
 use Guzzle\Http\Client;
+use Guzzle\Log\PsrLogAdapter;
+use Guzzle\Plugin\Log\LogPlugin;
 use Guzzle\Plugin\Oauth\OauthPlugin;
+use Psr\Log\LoggerAwareInterface;
+use Psr\Log\LoggerInterface;
 
-class ConnectionFactory
+class ConnectionFactory implements LoggerAwareInterface
 {
     /**
      * @var string
@@ -18,6 +22,11 @@ class ConnectionFactory
     private $secret;
 
     /**
+     * @var LoggerInterface
+     */
+    private $logger;
+
+    /**
      * @param string $key
      * @param string $secret
      */
@@ -25,6 +34,17 @@ class ConnectionFactory
     {
         $this->key = $key;
         $this->secret = $secret;
+    }
+
+    /**
+     * Sets a logger instance on the object
+     *
+     * @param LoggerInterface $logger
+     * @return null
+     */
+    public function setLogger(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
     }
 
     /**
@@ -48,6 +68,14 @@ class ConnectionFactory
 
         $oauth = new OauthPlugin($params);
         $client->addSubscriber($oauth);
+
+        if (null !== $this->logger) {
+            $client->addSubscriber(
+                new LogPlugin(
+                    new PsrLogAdapter($this->logger)
+                )
+            );
+        }
 
         return $client;
     }
