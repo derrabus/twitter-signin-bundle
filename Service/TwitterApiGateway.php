@@ -2,6 +2,9 @@
 
 namespace Rabus\Bundle\Twitter\SignInBundle\Service;
 
+use Guzzle\Http\Exception\RequestException;
+use Guzzle\Http\Message\Response;
+
 class TwitterApiGateway
 {
     const ENDPOINT_OAUTH_AUTHENTICATE = 'https://api.twitter.com/oauth/authenticate';
@@ -9,16 +12,16 @@ class TwitterApiGateway
     const ENDPOINT_OAUTH_ACCESS_TOKEN = 'https://api.twitter.com/oauth/access_token';
 
     /**
-     * @var \OAuth
+     * @var ConnectionFactory
      */
-    private $oauth;
+    private $connectionFactory;
 
     /**
-     * @param \OAuth $oauth
+     * @param ConnectionFactory $connectionFactory
      */
-    public function __construct(\OAuth $oauth)
+    public function __construct(ConnectionFactory $connectionFactory)
     {
-        $this->oauth = $oauth;
+        $this->connectionFactory = $connectionFactory;
     }
 
     /**
@@ -29,17 +32,23 @@ class TwitterApiGateway
      */
     public function getAccessToken(array $requestToken, $oauthVerifier)
     {
-        try {
-            $this->oauth->setToken($requestToken['oauth_token'], $requestToken['oauth_token_secret']);
+        $client = $this->connectionFactory
+            ->getOAuthConnection($requestToken['oauth_token'], $requestToken['oauth_token_secret']);
+        $request = $client->post('oauth/access_token');
+        $request->addHeader('oauth_verifier', $oauthVerifier);
 
-            return $this->oauth->getAccessToken(
-                self::ENDPOINT_OAUTH_ACCESS_TOKEN,
-                null,
-                $oauthVerifier
-            );
-        } catch (\OAuthException $e) {
+        try {
+            $response = $request->send();
+        } catch (RequestException $e) {
             throw new TwitterApiException('Fetching OAuth access token failed', 0, $e);
         }
+
+        $token = $this->extractTokenFromResponse($response);
+        if (!$token) {
+            throw new TwitterApiException('Fetching OAuth access token failed.');
+        }
+
+        return $token;
     }
 
     /**
@@ -49,15 +58,19 @@ class TwitterApiGateway
      */
     public function getRequestToken($callbackUrl = null)
     {
+        $client = $this->connectionFactory->getOAuthConnection();
+        $request = $client->post('oauth/request_token');
+        if ($callbackUrl) {
+            $request->addHeader('oauth_callback', $callbackUrl);
+        }
+
         try {
-            $token = $this->oauth->getRequestToken(
-                self::ENDPOINT_OAUTH_REQUEST_TOKEN,
-                $callbackUrl
-            );
-        } catch (\OAuthException $e) {
+            $response = $request->send();
+        } catch (RequestException $e) {
             throw new TwitterApiException('Fetching OAuth request token failed.', 0, $e);
         }
 
+        $token = $this->extractTokenFromResponse($response);
         if (!$token) {
             throw new TwitterApiException('Fetching OAuth request token failed.');
         }
@@ -72,5 +85,16 @@ class TwitterApiGateway
     public function generateAuthRedirectUrl(array $requestToken)
     {
         return self::ENDPOINT_OAUTH_AUTHENTICATE . '?oauth_token=' . urlencode($requestToken['oauth_token']);
+    }
+
+    /**
+     * @param Response $response
+     * @return array
+     */
+    private function extractTokenFromResponse(Response $response)
+    {
+        parse_str(trim($response->getBody(true)), $token);
+
+        return $token;
     }
 }

@@ -2,29 +2,52 @@
 
 namespace Rabus\Bundle\Twitter\SignInBundle\Tests\Service;
 
+use Guzzle\Http\Client;
+use Guzzle\Http\Exception\CurlException;
+use Guzzle\Plugin\Mock\MockPlugin;
+use Rabus\Bundle\Twitter\SignInBundle\Service\ConnectionFactory;
 use Rabus\Bundle\Twitter\SignInBundle\Service\TwitterApiGateway;
 
 class TwitterApiGatewayTest extends \PHPUnit_Framework_TestCase
 {
     /**
-     * @var \OAuth|\PHPUnit_Framework_MockObject_MockObject
+     * @var ConnectionFactory|\PHPUnit_Framework_MockObject_MockObject
      */
-    private $oauthMock;
+    private $factoryMock;
 
     /**
-     * @var TwitterApiGateway
+     * @var MockPlugin
      */
-    private $twitter;
+    private $mockPlugin;
 
     protected function setUp()
     {
         parent::setUp();
 
-        $this->oauthMock = $this->getMockBuilder('OAuth')
+        $this->factoryMock = $this->getMockBuilder('Rabus\\Bundle\\Twitter\\SignInBundle\\Service\\ConnectionFactory')
             ->disableOriginalConstructor()
             ->getMock();
 
-        $this->twitter = new TwitterApiGateway($this->oauthMock);
+        $this->mockPlugin = new MockPlugin;
+    }
+
+    /**
+     * @return TwitterApiGateway
+     */
+    private function bootstrapGateway()
+    {
+        return new TwitterApiGateway($this->factoryMock);
+    }
+
+    /**
+     * @return Client
+     */
+    private function bootstrapClient()
+    {
+        $client = new Client('https://api.example.com');
+        $client->addSubscriber($this->mockPlugin);
+
+        return $client;
     }
 
     public function testGetAccessToken()
@@ -32,18 +55,21 @@ class TwitterApiGatewayTest extends \PHPUnit_Framework_TestCase
         $requestToken = $this->generateTokenPair();
         $oauthVerifier = 'foobar';
 
-        $this->oauthMock->expects($this->at(0))
-            ->method('setToken')
-            ->with($requestToken['oauth_token'], $requestToken['oauth_token_secret']);
-        $this->oauthMock->expects($this->at(1))
-            ->method('getAccessToken')
-            ->with('https://api.twitter.com/oauth/access_token', null, $oauthVerifier)
-            ->will($this->returnValue($requestToken));
+        $this->factoryMock->expects($this->once())
+            ->method('getOAuthConnection')
+            ->with($requestToken['oauth_token'], $requestToken['oauth_token_secret'])
+            ->will($this->returnValue($this->bootstrapClient()));
 
-        $this->assertEquals(
-            $requestToken,
-            $this->twitter->getAccessToken($requestToken, $oauthVerifier)
-        );
+        $this->mockPlugin->addResponse(__DIR__ . '/fixtures/access_token.txt');
+
+        $accessToken = $this->bootstrapGateway()->getAccessToken($requestToken, $oauthVerifier);
+
+        $this->assertEquals('12-foo', $accessToken['oauth_token']);
+        $this->assertEquals('foobar', $accessToken['oauth_token_secret']);
+
+        $receivedRequests = $this->mockPlugin->getReceivedRequests();
+        $this->assertCount(1, $receivedRequests);
+        $this->assertEquals($oauthVerifier, $receivedRequests[0]->getHeader('oauth_verifier'));
     }
 
     /**
@@ -51,24 +77,34 @@ class TwitterApiGatewayTest extends \PHPUnit_Framework_TestCase
      */
     public function testGetAccessTokenThrowsException()
     {
-        $this->oauthMock->expects($this->any())
-            ->method($this->anything())
-            ->will($this->throwException(new \OAuthException()));
+        $this->factoryMock->expects($this->any())
+            ->method('getOAuthConnection')
+            ->will($this->returnValue($this->bootstrapClient()));
 
-        $this->twitter->getAccessToken($this->generateTokenPair(), 'foobar');
+        $this->mockPlugin->addException(new CurlException());
+
+        $this->bootstrapGateway()->getAccessToken($this->generateTokenPair(), 'foobar');
     }
 
     public function testGetRequestToken()
     {
         $callbackUrl = 'http://www.example.com/twitter/callback';
-        $requestToken = $this->generateTokenPair();
 
-        $this->oauthMock->expects($this->once())
-            ->method('getRequestToken')
-            ->with('https://api.twitter.com/oauth/request_token', $callbackUrl)
-            ->will($this->returnValue($requestToken));
+        $this->factoryMock->expects($this->once())
+            ->method('getOAuthConnection')
+            ->with()
+            ->will($this->returnValue($this->bootstrapClient()));
 
-        $this->assertEquals($requestToken, $this->twitter->getRequestToken($callbackUrl));
+        $this->mockPlugin->addResponse(__DIR__ . '/fixtures/request_token.txt');
+
+        $requestToken = $this->bootstrapGateway()->getRequestToken($callbackUrl);
+
+        $this->assertEquals('foo', $requestToken['oauth_token']);
+        $this->assertEquals('bar', $requestToken['oauth_token_secret']);
+
+        $receivedRequests = $this->mockPlugin->getReceivedRequests();
+        $this->assertCount(1, $receivedRequests);
+        $this->assertEquals($callbackUrl, $receivedRequests[0]->getHeader('oauth_callback'));
     }
 
     /**
@@ -76,18 +112,20 @@ class TwitterApiGatewayTest extends \PHPUnit_Framework_TestCase
      */
     public function testGetRequestTokenThrowsException()
     {
-        $this->oauthMock->expects($this->any())
-            ->method($this->anything())
-            ->will($this->throwException(new \OAuthException()));
+        $this->factoryMock->expects($this->any())
+            ->method('getOAuthConnection')
+            ->will($this->returnValue($this->bootstrapClient()));
 
-        $this->twitter->getRequestToken('http://www.example.com/twitter/callback');
+        $this->mockPlugin->addException(new CurlException());
+
+        $this->bootstrapGateway()->getRequestToken('http://www.example.com/twitter/callback');
     }
 
     public function testGenerateAuthRedirectUrl()
     {
         $this->assertEquals(
             'https://api.twitter.com/oauth/authenticate?oauth_token=foo',
-            $this->twitter->generateAuthRedirectUrl($this->generateTokenPair())
+            $this->bootstrapGateway()->generateAuthRedirectUrl($this->generateTokenPair())
         );
     }
 

@@ -1,0 +1,3 @@
+HTTP/1.1 200 OK
+
+oauth_token=foo&oauth_token_secret=bar&oauth_callback_confirmed=true
